@@ -5,15 +5,23 @@ import os
 import sys
 import requests
 
-def get_sdmx_field_list(in_url):
-    response = requests.get(
-        in_url 
-        #, headers={'accept': 'application/vnd.sdmx.data+json;version=1.0.0-wd'}
-    )
+def get_sdmx_field_list(in_url, in_headers=None):
+
+    if in_headers is not None:
+        response = requests.get(in_url, headers=in_headers)
+    else:
+        response = requests.get(in_url)
 
     if not response:
         return ['Unable to parse SDMX response. Check URL.']
     else:
+        if 'xml' in response.headers.get('content-type'):               
+            try_json_header = {'accept': 'application/vnd.sdmx.data+json;version=1.0.0-wd'}
+            response = requests.get(in_url, headers=try_json_header)
+
+            if 'xml' in response.headers.get('content-type'):              
+                return ['Unable to make request of SDMX API for JSON']
+        
         res_json = response.json()
         fields = []
         series_dimensions = res_json['data']['structure']['dimensions']['series']
@@ -37,6 +45,14 @@ def query_and_parse_sdmx(in_url, in_headers=None):
             headers[header[0]] = header[1]
 
     response = requests.get(in_url, headers=headers)
+
+    if 'xml' in response.headers.get('content-type'):               
+        try_json_header = {'accept': 'application/vnd.sdmx.data+json;version=1.0.0-wd'}
+        response = requests.get(in_url, headers=try_json_header)
+
+        if 'xml' in response.headers.get('content-type'):     
+            arcpy.AddError('SDMX API is not returning JSON')
+            return
 
     if response:
         res_json = response.json()
