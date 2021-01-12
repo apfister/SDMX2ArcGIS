@@ -7,8 +7,8 @@ import requests
 
 def get_sdmx_field_list(in_url):
     response = requests.get(
-        in_url, 
-        headers={'accept': 'application/vnd.sdmx.data+json;version=1.0.0-wd'}
+        in_url 
+        #, headers={'accept': 'application/vnd.sdmx.data+json;version=1.0.0-wd'}
     )
 
     if not response:
