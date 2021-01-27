@@ -5,6 +5,7 @@ import os
 import sys
 import requests
 
+
 def get_sdmx_field_list(in_url, in_headers=None):
 
     if in_headers is not None:
@@ -15,13 +16,14 @@ def get_sdmx_field_list(in_url, in_headers=None):
     if not response:
         return ['Unable to parse SDMX response. Check URL.']
     else:
-        if 'xml' in response.headers.get('content-type'):               
-            try_json_header = {'accept': 'application/vnd.sdmx.data+json;version=1.0.0-wd'}
+        if 'xml' in response.headers.get('content-type'):
+            try_json_header = {
+                'accept': 'application/vnd.sdmx.data+json;version=1.0.0-wd'}
             response = requests.get(in_url, headers=try_json_header)
 
-            if 'xml' in response.headers.get('content-type'):              
+            if 'xml' in response.headers.get('content-type'):
                 return ['Unable to make request of SDMX API for JSON']
-        
+
         res_json = response.json()
         fields = []
         series_dimensions = res_json['data']['structure']['dimensions']['series']
@@ -31,12 +33,14 @@ def get_sdmx_field_list(in_url, in_headers=None):
 
         return fields
 
+
 def get_observations(res_json):
     if 'observations' in res_json['data']['dataSets'][0]:
         return res_json['data']['dataSets'][0]['observations']
 
     if 'series' in res_json['data']['dataSets'][0]:
         return res_json['data']['dataSets'][0]['series']
+
 
 def query_and_parse_sdmx(in_url, in_headers=None):
     headers = {}
@@ -46,11 +50,12 @@ def query_and_parse_sdmx(in_url, in_headers=None):
 
     response = requests.get(in_url, headers=headers)
 
-    if 'xml' in response.headers.get('content-type'):               
-        try_json_header = {'accept': 'application/vnd.sdmx.data+json;version=1.0.0-wd'}
+    if 'xml' in response.headers.get('content-type'):
+        try_json_header = {
+            'accept': 'application/vnd.sdmx.data+json;version=1.0.0-wd'}
         response = requests.get(in_url, headers=try_json_header)
 
-        if 'xml' in response.headers.get('content-type'):     
+        if 'xml' in response.headers.get('content-type'):
             arcpy.AddError('SDMX API is not returning JSON')
             return
 
@@ -74,18 +79,19 @@ def query_and_parse_sdmx(in_url, in_headers=None):
             'res_count': res_count
         }
 
+
 def get_fields(observation_dimensions, series_dimensions, series_attributes, observation_attributes):
     fields = []
     for dim in series_dimensions:
         name = dim['id']
-        alias = dim['name']  
+        alias = dim['name']
         type = 'TEXT'
 
         if isinstance(alias, dict) and 'en' in alias:
             alias = alias['en']
 
-        fields.append([ f'{name}_CODE', type , f'{name}_CODE' ])
-        fields.append([ f'{name}', type, alias ])
+        fields.append([f'{name}_CODE', type, f'{name}_CODE'])
+        fields.append([f'{name}', type, alias])
 
     for dim in observation_dimensions:
         name = dim['id']
@@ -95,10 +101,10 @@ def get_fields(observation_dimensions, series_dimensions, series_attributes, obs
         if isinstance(alias, dict) and 'en' in alias:
             alias = alias['en']
 
-        fields.append([ f'{name}_CODE', type, f'{name}_CODE' ])
-        fields.append([ f'{name}', type, alias ])
+        fields.append([f'{name}_CODE', type, f'{name}_CODE'])
+        fields.append([f'{name}', type, alias])
 
-    fields.append([ 'OBS_VALUE', 'DOUBLE', 'Observed Value' ])
+    fields.append(['OBS_VALUE', 'DOUBLE', 'Observed Value'])
 
     for dim in series_attributes:
         name = dim['id']
@@ -108,8 +114,8 @@ def get_fields(observation_dimensions, series_dimensions, series_attributes, obs
         if isinstance(alias, dict) and 'en' in alias:
             alias = alias['en']
 
-        fields.append([ f'{name}_CODE', type, f'{name}_CODE' ])
-        fields.append([ f'{name}', type, alias ])
+        fields.append([f'{name}_CODE', type, f'{name}_CODE'])
+        fields.append([f'{name}', type, alias])
 
     for dim in observation_attributes:
         name = dim['id']
@@ -119,10 +125,11 @@ def get_fields(observation_dimensions, series_dimensions, series_attributes, obs
         if isinstance(alias, dict) and 'en' in alias:
             alias = alias['en']
 
-        fields.append([ f'{name}_CODE', type, f'{name}_CODE' ])
-        fields.append([ f'{name}', type, alias ])
+        fields.append([f'{name}_CODE', type, f'{name}_CODE'])
+        fields.append([f'{name}', type, alias])
 
     return fields
+
 
 def convert_sdmx_json_to_feature_rows(sdmx_response, in_sdmxjoinfield, in_sdmxjoinfieldconversion):
     observations = sdmx_response['obs']
@@ -133,7 +140,7 @@ def convert_sdmx_json_to_feature_rows(sdmx_response, in_sdmxjoinfield, in_sdmxjo
 
     fields = get_fields(observation_dimensions, series_dimensions,
                         series_attributes, observation_attributes)
-    
+
     has_added_conversion_field = False
     features = []
 
@@ -157,28 +164,31 @@ def convert_sdmx_json_to_feature_rows(sdmx_response, in_sdmxjoinfield, in_sdmxjo
 
             if series_fieldname == in_sdmxjoinfield and in_sdmxjoinfieldconversion is not None:
                 if in_sdmxjoinfieldconversion == 'String':
-                    holder[f'{series_fieldname}_str'] = str(series['values'][current_key_str]['id'])
+                    holder[f'{series_fieldname}_str'] = str(
+                        series['values'][current_key_str]['id'])
                     if not has_added_conversion_field:
                         fields.append([f'{series_fieldname}_str', 'TEXT'])
                         has_added_conversion_field = True
-                else: 
-                    holder[f'{series_fieldname}_int'] = int(series['values'][current_key_str]['id'])
+                else:
+                    holder[f'{series_fieldname}_int'] = int(
+                        series['values'][current_key_str]['id'])
                     if not has_added_conversion_field:
                         fields.append([f'{series_fieldname}_int', 'LONG'])
                         has_added_conversion_field = True
 
             if series_id == in_sdmxjoinfield and in_sdmxjoinfieldconversion is not None:
                 if in_sdmxjoinfieldconversion == 'String':
-                    holder[f'{series_id}_str'] = str(series['values'][current_key_str]['id'])
+                    holder[f'{series_id}_str'] = str(
+                        series['values'][current_key_str]['id'])
                     if not has_added_conversion_field:
                         fields.append([f'{series_id}_str', 'TEXT'])
                         has_added_conversion_field = True
-                else: 
-                    holder[f'{series_id}_int'] = int(series['values'][current_key_str]['id'])
+                else:
+                    holder[f'{series_id}_int'] = int(
+                        series['values'][current_key_str]['id'])
                     if not has_added_conversion_field:
                         fields.append([f'{series_id}_int', 'LONG'])
                         has_added_conversion_field = True
-
 
         attributes_index = None
         if 'attributes' in observations[obs]:
@@ -196,7 +206,6 @@ def convert_sdmx_json_to_feature_rows(sdmx_response, in_sdmxjoinfield, in_sdmxjo
 
                     holder[sa_fieldname] = sa_name_value
                     holder[f'{sa_fieldname}_CODE'] = sa_code
-
 
         observation_values = observations[obs]['observations']
         for o_value in observation_values:
@@ -236,7 +245,12 @@ def convert_sdmx_json_to_feature_rows(sdmx_response, in_sdmxjoinfield, in_sdmxjo
                 if isinstance(obs_atts_name_value, dict) and 'en' in obs_atts_name_value:
                     obs_atts_name_value = obs_atts_name_value['en']
 
-                feature['attributes'][obs_atts_id_field] = obs_atts['values'][o_value]['id']   
+                if 'id' in obs_atts['values'][o_value]:
+                    feature['attributes'][obs_atts_id_field] = obs_atts['values'][o_value]['id']
+                else:
+                    feature['attributes'][obs_atts_id_field] = None
+
+                #feature['attributes'][obs_atts_id_field] = obs_atts['values'][o_value]['id']
                 feature['attributes'][obs_atts_id] = obs_atts_name_value
 
             for h in holder:
@@ -246,40 +260,45 @@ def convert_sdmx_json_to_feature_rows(sdmx_response, in_sdmxjoinfield, in_sdmxjo
 
     return fields, features
 
+
 def create_fc_table(in_workspace, output_filename):
     try:
-        tbl_output = arcpy.CreateTable_management(in_workspace, output_filename)             
+        tbl_output = arcpy.CreateTable_management(
+            in_workspace, output_filename)
         return tbl_output.getOutput(0)
     except Exception:
         e = sys.exc_info()[1]
         error = e.args[0]
-        print (error)
+        print(error)
         return error
+
 
 def add_fields(fields, tbl):
     try:
-        arcpy.AddFields_management(tbl, fields)   
+        arcpy.AddFields_management(tbl, fields)
     except Exception:
         e = sys.exc_info()[1]
         error = e.args[0]
-        print (error)
+        print(error)
         return error, None
+
 
 def add_rows(sdmx_feature_rows, tbl, fields):
     cursor = arcpy.da.InsertCursor(tbl, fields)
 
     cnt = len(sdmx_feature_rows)
-    arcpy.SetProgressor('step', f'Inserting {cnt} rows into output feature class ...', 0, cnt, 1)    
+    arcpy.SetProgressor(
+        'step', f'Inserting {cnt} rows into output feature class ...', 0, cnt, 1)
     counter = 1
     for sdmx_row in sdmx_feature_rows:
         row = []
         for f in fields:
             row_value = None
             if f in sdmx_row['attributes']:
-                row_value = sdmx_row['attributes'][f] 
-            
+                row_value = sdmx_row['attributes'][f]
+
             row.append(row_value)
-        
+
         arcpy.SetProgressorPosition(counter)
         arcpy.SetProgressorLabel(f'Inserting row {counter} of {cnt} ...')
         try:
@@ -298,7 +317,8 @@ def get_geom(geo_field, geo_value):
     global geom_cache
     global geo_fl
 
-    wc = """{0} = '{1}'""".format(arcpy.AddFieldDelimiters(geo_fl, geo_field), geo_value)
+    wc = """{0} = '{1}'""".format(
+        arcpy.AddFieldDelimiters(geo_fl, geo_field), geo_value)
     # arcpy.AddMessage(wc)
     if geo_value in geom_cache:
         # arcpy.AddMessage(f'got from cache for {geo_value}')
@@ -307,8 +327,9 @@ def get_geom(geo_field, geo_value):
         geom = None
         row = None
         try:
-            row = next(arcpy.da.SearchCursor(geo_fl, ['SHAPE@', geo_field],where_clause=wc))
-        except: 
+            row = next(arcpy.da.SearchCursor(
+                geo_fl, ['SHAPE@', geo_field], where_clause=wc))
+        except:
             pass
 
         if row and len(row) > 0:
@@ -317,7 +338,8 @@ def get_geom(geo_field, geo_value):
             geo_val_to_add = row[1]
             geom_cache[geo_val_to_add] = geom
         else:
-            arcpy.AddMessage(f'Unable to get geometry from Geography layer. The where_clause, {wc} did not return results.')
+            arcpy.AddMessage(
+                f'Unable to get geometry from Geography layer. The where_clause, {wc} did not return results.')
 
         return geom
 
@@ -345,24 +367,30 @@ def join_proper(tbl, fields, in_outworkspace, in_outputtablename, in_sdmxjoinfie
     if in_shouldkeepallgeo:
         keep_all = 'KEEP_ALL'
 
-    joined_table = arcpy.AddJoin_management(in_geolayer, in_geojoinfield, tbl, sdmx_join_field, keep_all)    
+    joined_table = arcpy.AddJoin_management(
+        in_geolayer, in_geojoinfield, tbl, sdmx_join_field, keep_all)
 
-    arcpy.CopyFeatures_management(joined_table, os.path.join(in_outworkspace, in_outputtablename))
+    arcpy.CopyFeatures_management(joined_table, os.path.join(
+        in_outworkspace, in_outputtablename))
 
     if len(geo_fields_to_delete) > 0:
-        geo_layer_title = in_geolayer.name
+        geo_desc = arcpy.Describe(in_geolayer)
+        geo_layer_title = geo_desc.name
 
-        fields_deleted = [f'{geo_layer_title}_{f}' for f in geo_fields_to_delete]
+        fields_deleted = [
+            f'{geo_layer_title}_{f}' for f in geo_fields_to_delete]
 
-        arcpy.DeleteField_management(os.path.join(in_outworkspace, in_outputtablename), fields_deleted)
+        arcpy.DeleteField_management(os.path.join(
+            in_outworkspace, in_outputtablename), fields_deleted)
 
     try:
         arcpy.RemoveJoin_management(in_geolayer)
     except:
-        arcpy.AddWarning('Unable to remove join. Check your geography layer for any Joins that may remain')
-    
+        arcpy.AddWarning(
+            'Unable to remove join. Check your geography layer for any Joins that may remain')
 
     return os.path.join(in_outworkspace, in_outputtablename)
+
 
 def join_to_geo(tbl, fields, in_outworkspace, in_outputtablename, in_sdmxjoinfield, in_geolayer, in_geojoinfield, in_shouldkeepallgeo, unique_location_ids):
     global geo_fl
@@ -372,20 +400,21 @@ def join_to_geo(tbl, fields, in_outworkspace, in_outputtablename, in_sdmxjoinfie
     except Exception:
         e = sys.exc_info()[1]
         error = e.args[0]
-        print (error)
+        print(error)
         return error, None
 
     in_geo_fl_desc = arcpy.Describe(geo_fl)
     #in_geo_field_info = in_geo_fl_desc.fieldInfo
     geo_layer_feature_type = in_geo_fl_desc.shapeType
     geo_layer_sr = in_geo_fl_desc.spatialReference
-    
+
     try:
-        arcpy.CreateFeatureclass_management(in_outworkspace, in_outputtablename, geo_layer_feature_type, '#', '#', '#', geo_layer_sr)
+        arcpy.CreateFeatureclass_management(
+            in_outworkspace, in_outputtablename, geo_layer_feature_type, '#', '#', '#', geo_layer_sr)
     except Exception:
         e = sys.exc_info()[1]
         error = e.args[0]
-        print (error)
+        print(error)
         return error, None
 
     add_fields(fields, os.path.join(in_outworkspace, in_outputtablename))
@@ -403,23 +432,25 @@ def join_to_geo(tbl, fields, in_outworkspace, in_outputtablename, in_sdmxjoinfie
             insert_row = tuple(row_list)
 
             insert_rows.append(insert_row)
-    
+
     cnt = int(arcpy.GetCount_management(tbl)[0])
     counter = 1
-    arcpy.SetProgressor('step', f'Inserting {cnt} rows into output geo feature class ...', 0, cnt, 1)
-    i_cursor = arcpy.da.InsertCursor(os.path.join(in_outworkspace, in_outputtablename), ['SHAPE@'] + out_fields)
-    for row in insert_rows:           
+    arcpy.SetProgressor(
+        'step', f'Inserting {cnt} rows into output geo feature class ...', 0, cnt, 1)
+    i_cursor = arcpy.da.InsertCursor(os.path.join(
+        in_outworkspace, in_outputtablename), ['SHAPE@'] + out_fields)
+    for row in insert_rows:
         arcpy.SetProgressorPosition(counter)
         arcpy.SetProgressorLabel(f'Inserting row {counter} of {cnt} ...')
         try:
             i_cursor.insertRow(row)
             counter = counter + 1
         except:
-            #arcpy.AddMessage(i_cursor.fields)
+            # arcpy.AddMessage(i_cursor.fields)
             arcpy.AddError('Error inserting rows')
             del i_cursor
             return 'Error inserting rows', None
-    
+
     del i_cursor
 
     return None, os.path.join(in_outworkspace, in_outputtablename)
@@ -490,7 +521,7 @@ class SDMXQueryUrlToTable(object):
             parameterType="Required",
             direction="Input")
 
-         # Join to Geography
+        # Join to Geography
         param_joingeo = arcpy.Parameter(
             displayName="Join to Geography",
             name="in_joingeo",
@@ -556,7 +587,7 @@ class SDMXQueryUrlToTable(object):
             direction="Input")
 
         # Name of output geography joined layer
-        param_outputgeoname =  arcpy.Parameter(
+        param_outputgeoname = arcpy.Parameter(
             displayName="Output Feature Class Name",
             name="in_geolayername",
             datatype="GPString",
@@ -567,7 +598,7 @@ class SDMXQueryUrlToTable(object):
         param_outputfctablepath = arcpy.Parameter(
             displayName="Output Feature Class",
             name="param_outputfcpath",
-            datatype=["GPFeatureLayer","DETable"],
+            datatype=["GPFeatureLayer", "DETable"],
             parameterType="Derived",
             direction="Output")
 
@@ -577,7 +608,7 @@ class SDMXQueryUrlToTable(object):
         # SDGs sample
         #param_url.value = 'https://data.un.org/ws/rest/data/IAEG-SDGs,DF_SDG_GLH,1.3/..SI_POV_EMP1.1+9+543+62+747+753+15+12+504+729+788+818+90+30+156+410+496+34+50+64+144+356+364+462+524+586+35+104+116+360+418+458+608+626+704+764+143+398+417+762+860+145+31+51+268+275+368+400+422+760+792+887+8+70+112+199+202+24+72+108+120+132+140+148+174+178+180+204+231+242+266+270+288+324+384+404+419+32+68+76+152+170+188+214+218+222+320+332+340+388+426+430+432+450+454+466+478+480+484+498+499+508+516+558+562+566+591+598+600+604+624+643+646+686+688+694+710+716+722+768+800+804+834+854+858+862+894._T+F+M........../ALL/?detail=full&dimensionAtObservation=TIME_PERIOD'
         #param_useheaders.value = True
-        
+
         param_geojoinfield.parameterDependencies = [param_geolayer.name]
 
         param_headers.columns = [['GPString', 'Header'], ['GPString', 'Value']]
@@ -592,8 +623,10 @@ class SDMXQueryUrlToTable(object):
         param_keepallgeo.enabled = False
         param_geofieldmapping.enabled = False
 
-        param_sdmxjoinfieldconversions.filter.list = ['None', 'String', 'Integer']
-        param_geojoinfieldconversions.filter.list = ['None', 'String', 'Integer']
+        param_sdmxjoinfieldconversions.filter.list = [
+            'None', 'String', 'Integer']
+        param_geojoinfieldconversions.filter.list = [
+            'None', 'String', 'Integer']
 
         param_geofieldmapping.filter.type = 'ValueList'
         param_geofieldmapping.filter.list = []
@@ -629,7 +662,7 @@ class SDMXQueryUrlToTable(object):
             fields = get_sdmx_field_list(parameters[0].value)
             if fields:
                 parameters[6].filter.list = fields
-                parameters[6].value = fields[0]   
+                parameters[6].value = fields[0]
 
         parameters[6].enabled = parameters[5].value
         parameters[7].enabled = parameters[5].value
@@ -645,7 +678,8 @@ class SDMXQueryUrlToTable(object):
             desc = arcpy.Describe(parameters[8].value)
             if desc is not None:
                 fields = []
-                fields = [f.name for f in desc.fields if not f.required and f.type not in ['Geometry', 'OID']]
+                fields = [f.name for f in desc.fields if not f.required and f.type not in [
+                    'Geometry', 'OID']]
                 parameters[12].value = ''
                 parameters[12].filter.list = []
                 parameters[12].filter.list = fields
@@ -670,7 +704,7 @@ class SDMXQueryUrlToTable(object):
         in_headers = parameters[2].value
         in_outputtablename = parameters[3].valueAsText
         in_outworkspace = parameters[4].valueAsText
-        in_shouldjoin = parameters[5].value    
+        in_shouldjoin = parameters[5].value
         in_sdmxjoinfield = parameters[6].valueAsText.split('|')[0].strip()
         in_sdmxjoinfieldconversion = parameters[7].valueAsText
         in_geolayer = parameters[8].value
@@ -692,58 +726,63 @@ class SDMXQueryUrlToTable(object):
 
         # Convert the SDMX Response to features
         arcpy.SetProgressor('default', 'Converting the SDMX response ...')
-        fields, sdmx_feature_rows = convert_sdmx_json_to_feature_rows(sdmx_response, in_sdmxjoinfield, in_sdmxjoinfieldconversion)
+        fields, sdmx_feature_rows = convert_sdmx_json_to_feature_rows(
+            sdmx_response, in_sdmxjoinfield, in_sdmxjoinfieldconversion)
 
         # add the fields
         arcpy.SetProgressor('default', 'Creating the feature class table ...')
         tbl = create_fc_table(in_outworkspace, in_outputtablename)
-        
+
         # add the fields
-        arcpy.SetProgressor('default', 'Adding fields to output feature class ...')
+        arcpy.SetProgressor(
+            'default', 'Adding fields to output feature class ...')
         add_fields(fields, tbl)
 
         # Add the rows to the table
-        arcpy.SetProgressor('default', 'Adding rows to SDMX feature class table ...')
+        arcpy.SetProgressor(
+            'default', 'Adding rows to SDMX feature class table ...')
         row_fields = list(sdmx_feature_rows[0]['attributes'].keys())
-   
+
         add_rows(sdmx_feature_rows, tbl, row_fields)
 
         if in_shouldjoin:
             unique_location_ids = []
-            #for c in new_cases:
+            # for c in new_cases:
             #    for k in c.keys():
             #        if k == 'locationId':
             #            if not c[k] in unique_location_ids:
             #                unique_location_ids.append(c[k])
 
-
             # create cases FC table
-            arcpy.SetProgressor('default', f'Creating {in_outputtablename} feature class with geographies ...')
+            arcpy.SetProgressor(
+                'default', f'Creating {in_outputtablename} feature class with geographies ...')
 
             output_geofc_name = f'{in_outputtablename}_geo'
             if in_outputgeoname is not None:
                 output_geofc_name = in_outputgeoname
 
             #err, fc_path = join_to_geo(tbl, fields, in_outworkspace, output_geofc_name, in_sdmxjoinfield, in_geolayer, in_geojoinfield, in_shouldkeepallgeo, unique_location_ids)
-            #if err is not None:
+            # if err is not None:
             #    arcpy.AddError(err)
-                        
+
             geo_fields_to_delete = []
             geo_fields_to_keep = []
 
             if in_geofieldmapping is not None and in_geofieldmapping.rowCount > 0:
                 row_count = in_geofieldmapping.rowCount
                 for i in range(row_count):
-                    geo_fields_to_keep.append(in_geofieldmapping.getValue(i,0))
+                    geo_fields_to_keep.append(
+                        in_geofieldmapping.getValue(i, 0))
 
                 for field in arcpy.Describe(in_geolayer).fields:
                     if field.name not in geo_fields_to_keep:
                         geo_fields_to_delete.append(field.name)
 
-            fc_path = join_proper(tbl, fields, in_outworkspace, output_geofc_name, in_sdmxjoinfield, in_geolayer, in_geojoinfield, in_sdmxjoinfieldconversion, in_shouldkeepallgeo, geo_fields_to_delete)
+            fc_path = join_proper(tbl, fields, in_outworkspace, output_geofc_name, in_sdmxjoinfield, in_geolayer,
+                                  in_geojoinfield, in_sdmxjoinfieldconversion, in_shouldkeepallgeo, geo_fields_to_delete)
 
             arcpy.SetParameter(len(parameters)-1, fc_path)
-        else:           
+        else:
             arcpy.SetParameter(len(parameters)-1, tbl)
 
         return
